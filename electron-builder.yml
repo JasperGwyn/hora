@@ -1,0 +1,23 @@
+appId: com.hora.timer
+productName: Hora
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**/*
+win:
+  icon: resources/icon.ico
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Hora
+extraResources:
+  - from: resources/tray.png
+    to: tray.png
+  - from: resources/icon.png
+    to: icon.png
+  - from: resources/icon.ico
+    to: icon.ico
