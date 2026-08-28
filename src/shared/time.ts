@@ -172,6 +172,43 @@ export function statusLabel(status: HourStatus): string {
   }
 }
 
+export function isAssignableStatus(status: HourStatus): boolean {
+  switch (status) {
+    case "pending":
+    case "assigned":
+    case "unassigned":
+      return true;
+    case "open":
+    case "skipped_idle":
+      return false;
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
+    }
+  }
+}
+
+export function oldestPendingEntry(entries: HourEntry[]): HourEntry | null {
+  return (
+    [...entries]
+      .filter((entry) => entry.status === "pending")
+      .sort((a, b) => a.segmentStartMs - b.segmentStartMs)[0] ?? null
+  );
+}
+
+export function promptEntryForFocus(
+  entries: HourEntry[],
+  focusId: string | null,
+): HourEntry | null {
+  if (focusId) {
+    const focused = entries.find((entry) => entry.id === focusId);
+    if (focused && isAssignableStatus(focused.status)) {
+      return focused;
+    }
+  }
+  return oldestPendingEntry(entries);
+}
+
 export function isClosedEntry(entry: HourEntry): boolean {
   return entry.status !== "open";
 }

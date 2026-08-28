@@ -12,6 +12,7 @@ import {
   formatEntryRange,
   formatHourRange,
   getNextHourMs,
+  isAssignableStatus,
   startOfLocalDay,
   startOfLocalWeek,
   statusLabel,
@@ -70,10 +71,18 @@ export function Dashboard(): JSX.Element {
   const pending = state.entries
     .filter((entry) => entry.status === "pending")
     .sort((a, b) => a.segmentStartMs - b.segmentStartMs);
-  const recent = state.entries
-    .filter((entry) => entry.status !== "open")
+  const pendingIds = new Set(pending.map((entry) => entry.id));
+  const recentRest = state.entries
+    .filter((entry) => entry.status !== "open" && !pendingIds.has(entry.id))
     .sort((a, b) => b.segmentStartMs - a.segmentStartMs)
     .slice(0, 8);
+  const logEntries = [...pending, ...recentRest];
+  const logTitle =
+    pending.length > 0 && recentRest.length > 0
+      ? "Pendientes y recientes"
+      : pending.length > 0
+        ? "Pendientes"
+        : "Horas recientes";
   const names = new Map(state.projects.map((project) => [project.id, project.name]));
   const canCloseNow =
     !live.awaitingResume && live.activeMs >= state.settings.minActiveMsToPrompt;
@@ -91,7 +100,6 @@ export function Dashboard(): JSX.Element {
     : canCloseNow
       ? "Registra el uso de hoy hasta ahora. Si después seguís, Hora vuelve a preguntar."
       : `Hace falta al menos ${formatDuration(state.settings.minActiveMsToPrompt)} de uso para registrar este tramo.`;
-  const logEntries = pending.length > 0 ? pending : recent;
 
   return (
     <div className="app-shell">
@@ -150,7 +158,7 @@ export function Dashboard(): JSX.Element {
         </section>
 
         <section className="panel log-panel">
-          <h2>{pending.length > 0 ? "Pendientes" : "Horas recientes"}</h2>
+          <h2>{logTitle}</h2>
           {logEntries.length === 0 ? (
             <p className="empty">Cuando cierre la hora, aparece acá el registro.</p>
           ) : (
@@ -160,6 +168,8 @@ export function Dashboard(): JSX.Element {
                   entry.status === "assigned"
                     ? formatEntryProjectLabel(entryAllocations(entry), names)
                     : null;
+                const canEdit =
+                  isAssignableStatus(entry.status) && entry.status !== "pending";
                 return (
                   <div
                     className={`entry${entry.status === "pending" ? " pending" : ""}`}
@@ -183,10 +193,21 @@ export function Dashboard(): JSX.Element {
                           className="ghost-btn"
                           type="button"
                           onClick={() => {
-                            void window.hora.openPrompt();
+                            void window.hora.openPrompt(entry.id);
                           }}
                         >
                           Asignar
+                        </button>
+                      ) : null}
+                      {canEdit ? (
+                        <button
+                          className="ghost-btn"
+                          type="button"
+                          onClick={() => {
+                            void window.hora.openPrompt(entry.id);
+                          }}
+                        >
+                          Editar
                         </button>
                       ) : null}
                       <button

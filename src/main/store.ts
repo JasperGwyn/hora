@@ -19,6 +19,8 @@ import { canonicalizeProjectName, hydrateProjects } from "@shared/projects";
 import {
   closeOpenHour,
   hydrateSegmentBounds,
+  isAssignableStatus,
+  oldestPendingEntry,
   resolveStaleOpenHours,
 } from "@shared/time";
 import { createLogger } from "@shared/logger";
@@ -63,6 +65,9 @@ function assignedEntry(
 ): HourEntry {
   switch (target.kind) {
     case "project":
+      if (!projectExists(projects, target.projectId)) {
+        throw new Error("Proyecto no encontrado");
+      }
       return {
         ...entry,
         assignedAt,
@@ -291,6 +296,9 @@ export class HoraStore {
     if (!entry) {
       throw new Error("Hora no encontrada");
     }
+    if (!isAssignableStatus(entry.status)) {
+      throw new Error("Esta hora no se puede asignar");
+    }
     const assignedAt = new Date().toISOString();
     const next = assignedEntry(entry, target, assignedAt, this.state.projects);
     this.state.entries = this.state.entries.map((item) =>
@@ -311,11 +319,12 @@ export class HoraStore {
     return entry;
   }
 
+  findEntry(entryId: string): HourEntry | null {
+    return this.state.entries.find((entry) => entry.id === entryId) ?? null;
+  }
+
   oldestPending(): HourEntry | null {
-    const pending = this.state.entries
-      .filter((entry) => entry.status === "pending")
-      .sort((a, b) => a.segmentStartMs - b.segmentStartMs);
-    return pending[0] ?? null;
+    return oldestPendingEntry(this.state.entries);
   }
 
   pendingCount(): number {

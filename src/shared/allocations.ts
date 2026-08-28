@@ -24,6 +24,17 @@ export function equalAllocations(projectIds: string[]): HourAllocation[] {
   }));
 }
 
+export function toggleProjectInSplit(
+  projectId: string,
+  current: HourAllocation[],
+): HourAllocation[] {
+  const ids = current.map((item) => item.projectId);
+  const nextIds = ids.includes(projectId)
+    ? ids.filter((id) => id !== projectId)
+    : [...ids, projectId];
+  return equalAllocations(nextIds);
+}
+
 export function primaryProjectId(allocations: HourAllocation[]): string | null {
   if (allocations.length === 0) {
     return null;

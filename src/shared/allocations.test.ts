@@ -10,6 +10,7 @@ import {
   nudgeAllocation,
   setTwoWayPercent,
   singleAllocation,
+  toggleProjectInSplit,
 } from "./allocations.js";
 
 describe("equalPercents", () => {
@@ -138,6 +139,13 @@ describe("nudgeAllocation", () => {
       { projectId: "b", percent: 35 },
       { projectId: "c", percent: 30 },
     ]);
+  });
+});
+
+describe("toggleProjectInSplit", () => {
+  it("reparte en partes iguales al sumar o sacar un proyecto", () => {
+    expect(toggleProjectInSplit("b", singleAllocation("a"))).toEqual(equalAllocations(["a", "b"]));
+    expect(toggleProjectInSplit("a", equalAllocations(["a", "b"]))).toEqual(singleAllocation("b"));
   });
 });
 

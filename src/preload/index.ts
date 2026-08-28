@@ -17,7 +17,9 @@ const api = {
   updateSettings: (patch: Partial<Pick<AppSettings, "launchAtLogin">>): Promise<AppSettings> =>
     ipcRenderer.invoke("hora:update-settings", patch),
   openDashboard: (): Promise<void> => ipcRenderer.invoke("hora:open-dashboard"),
-  openPrompt: (): Promise<void> => ipcRenderer.invoke("hora:open-prompt"),
+  openPrompt: (entryId?: string): Promise<void> =>
+    ipcRenderer.invoke("hora:open-prompt", entryId),
+  getPromptFocus: (): Promise<string | null> => ipcRenderer.invoke("hora:get-prompt-focus"),
   closePrompt: (): Promise<void> => ipcRenderer.invoke("hora:close-prompt"),
   closeNow: (): Promise<AppState> => ipcRenderer.invoke("hora:close-now"),
   onState: (callback: (state: AppState) => void): (() => void) => {
@@ -36,6 +38,15 @@ const api = {
     ipcRenderer.on("hora:live", listener);
     return () => {
       ipcRenderer.removeListener("hora:live", listener);
+    };
+  },
+  onPromptFocus: (callback: (entryId: string | null) => void): (() => void) => {
+    const listener = (_event: unknown, entryId: string | null): void => {
+      callback(entryId);
+    };
+    ipcRenderer.on("hora:prompt-focus", listener);
+    return () => {
+      ipcRenderer.removeListener("hora:prompt-focus", listener);
     };
   },
 };

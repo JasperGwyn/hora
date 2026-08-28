@@ -17,6 +17,7 @@ type HourSplitEditorProps = {
   allocations: HourAllocation[];
   projects: Project[];
   activeMs: number;
+  assignLabel?: string;
   onChange: (allocations: HourAllocation[]) => void;
   onAssign: () => void;
 };
@@ -29,6 +30,7 @@ export function HourSplitEditor({
   allocations,
   projects,
   activeMs,
+  assignLabel = "Asignar",
   onChange,
   onAssign,
 }: HourSplitEditorProps): JSX.Element {
@@ -156,7 +158,7 @@ export function HourSplitEditor({
         disabled={!ready}
         onClick={onAssign}
       >
-        Asignar
+        {assignLabel}
       </button>
     </div>
   );

@@ -10,6 +10,8 @@ import {
   getHourStartMs,
   getNextHourMs,
   hydrateSegmentBounds,
+  isAssignableStatus,
+  promptEntryForFocus,
   resolveStaleOpenHours,
   shouldOpenFollowUpSegment,
   shouldPromoteFollowUp,
@@ -250,5 +252,51 @@ describe("shouldPromoteFollowUp", () => {
   it("no crea el tramo de continuación hasta que haya uso real", () => {
     expect(shouldPromoteFollowUp(20_000, DEFAULT_MIN_ACTIVE_MS_TO_PROMPT)).toBe(false);
     expect(shouldPromoteFollowUp(60_000, DEFAULT_MIN_ACTIVE_MS_TO_PROMPT)).toBe(true);
+  });
+});
+
+describe("isAssignableStatus", () => {
+  it("permite reasignar pendientes, asignadas y sin proyecto", () => {
+    expect(isAssignableStatus("pending")).toBe(true);
+    expect(isAssignableStatus("assigned")).toBe(true);
+    expect(isAssignableStatus("unassigned")).toBe(true);
+  });
+
+  it("bloquea la hora en curso y las que no tuvieron uso", () => {
+    expect(isAssignableStatus("open")).toBe(false);
+    expect(isAssignableStatus("skipped_idle")).toBe(false);
+  });
+});
+
+describe("promptEntryForFocus", () => {
+  const pending: HourEntry = {
+    id: "pending",
+    hourStartMs: 1,
+    segmentStartMs: 1,
+    segmentEndMs: 2,
+    activeMs: 60_000,
+    idleMs: 0,
+    projectId: null,
+    allocations: [],
+    status: "pending",
+    assignedAt: null,
+  };
+  const assigned: HourEntry = {
+    ...pending,
+    id: "assigned",
+    hourStartMs: 2,
+    segmentStartMs: 2,
+    projectId: "p1",
+    allocations: [{ projectId: "p1", percent: 100 }],
+    status: "assigned",
+    assignedAt: "2026-08-27T12:00:00.000Z",
+  };
+
+  it("abre el tramo pedido si se puede reasignar", () => {
+    expect(promptEntryForFocus([pending, assigned], "assigned")?.id).toBe("assigned");
+  });
+
+  it("cae al pendiente más viejo si no hay foco", () => {
+    expect(promptEntryForFocus([assigned, pending], null)?.id).toBe("pending");
   });
 });

@@ -7,7 +7,13 @@ import {
 } from "electron";
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import type { AssignTarget, HourEntry } from "@shared/types";
-import { formatDuration, formatEntryRange, formatHourRange, getNextHourMs } from "@shared/time";
+import {
+  formatDuration,
+  formatEntryRange,
+  formatHourRange,
+  getNextHourMs,
+  isAssignableStatus,
+} from "@shared/time";
 import { createLogger } from "@shared/logger";
 import { HoraStore } from "./store";
 import { IdleTracker } from "./tracker";
@@ -34,6 +40,7 @@ let promptWindow: BrowserWindow | null = null;
 let tray: ReturnType<typeof createTray> | null = null;
 let quitting = false;
 let flushingOnQuit = false;
+let promptFocusId: string | null = null;
 
 function startHidden(): boolean {
   return process.argv.includes("--hidden");
@@ -93,6 +100,7 @@ function showDashboard(): void {
 }
 
 function destroyPrompt(): void {
+  promptFocusId = null;
   if (promptWindow && !promptWindow.isDestroyed()) {
     promptWindow.destroy();
   }
@@ -104,6 +112,21 @@ function syncPromptState(): void {
     return;
   }
   promptWindow.webContents.send("hora:state", store.getState());
+  promptWindow.webContents.send("hora:prompt-focus", promptFocusId);
+}
+
+function resolvePromptEntry(entryId?: string): HourEntry | null {
+  if (!store) {
+    return null;
+  }
+  if (entryId) {
+    const entry = store.findEntry(entryId);
+    if (entry && isAssignableStatus(entry.status)) {
+      return entry;
+    }
+    return null;
+  }
+  return store.oldestPending();
 }
 
 function revealPrompt(dashboardWasOpen: boolean): void {
@@ -116,42 +139,46 @@ function revealPrompt(dashboardWasOpen: boolean): void {
   presentPromptWindow(promptWindow);
   setImmediate(() => {
     keepDashboardHidden(dashboardWasOpen);
-    if (promptWindow && !promptWindow.isDestroyed() && store?.oldestPending()) {
+    if (promptWindow && !promptWindow.isDestroyed() && promptFocusId) {
       presentPromptWindow(promptWindow);
     }
   });
 }
 
-function showPrompt(): void {
+function showPrompt(entryId?: string): void {
   if (!store) {
     return;
   }
-  const pending = store.oldestPending();
-  if (!pending) {
-    destroyPrompt();
+  const target = resolvePromptEntry(entryId);
+  if (!target) {
+    if (!entryId) {
+      destroyPrompt();
+    }
     return;
   }
+  promptFocusId = target.id;
   const dashboardWasOpen = isDashboardOpen();
   if (!promptWindow || promptWindow.isDestroyed()) {
     promptWindow = createPromptWindow();
     promptWindow.on("closed", () => {
       promptWindow = null;
+      promptFocusId = null;
     });
     promptWindow.webContents.on("did-finish-load", () => {
       syncPromptState();
     });
     whenWindowReady(promptWindow, () => {
       logger.info("Mostrando prompt", {
-        entryId: pending.id,
-        hourStartMs: pending.hourStartMs,
+        entryId: target.id,
+        hourStartMs: target.hourStartMs,
       });
       revealPrompt(dashboardWasOpen);
     });
     return;
   }
   logger.info("Mostrando prompt", {
-    entryId: pending.id,
-    hourStartMs: pending.hourStartMs,
+    entryId: target.id,
+    hourStartMs: target.hourStartMs,
   });
   revealPrompt(dashboardWasOpen);
 }
@@ -259,10 +286,12 @@ function registerIpc(): void {
       if (!store) {
         throw new Error("Store no inicializado");
       }
+      const current = store.findEntry(entryId);
+      const wasPending = current?.status === "pending";
       store.assignHour(entryId, target);
       await store.save();
       broadcast();
-      if (store.oldestPending()) {
+      if (wasPending && store.oldestPending()) {
         showPrompt();
       } else {
         destroyPrompt();
@@ -277,7 +306,7 @@ function registerIpc(): void {
     const deleted = store.deleteHour(entryId);
     await store.save();
     broadcast();
-    if (deleted.status === "pending") {
+    if (promptFocusId === deleted.id || deleted.status === "pending") {
       if (store.oldestPending()) {
         showPrompt();
       } else {
@@ -311,9 +340,10 @@ function registerIpc(): void {
   ipcMain.handle("hora:open-dashboard", () => {
     showDashboard();
   });
-  ipcMain.handle("hora:open-prompt", () => {
-    showPrompt();
+  ipcMain.handle("hora:open-prompt", (_event, entryId?: string) => {
+    showPrompt(typeof entryId === "string" ? entryId : undefined);
   });
+  ipcMain.handle("hora:get-prompt-focus", () => promptFocusId);
   ipcMain.handle("hora:close-prompt", () => {
     destroyPrompt();
   });

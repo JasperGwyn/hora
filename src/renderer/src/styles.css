@@ -878,6 +878,22 @@ input:focus-visible {
   filter: none;
 }
 
+.hour-assign {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+}
+
+.hour-assign--prompt {
+  flex: 1;
+}
+
+.prompt-project.is-current {
+  background: var(--paper-deep);
+  border-color: rgba(26, 22, 18, 0.22);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
