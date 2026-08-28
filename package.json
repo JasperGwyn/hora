@@ -3,9 +3,27 @@
   "version": "1.0.0",
   "description": "Medí a qué proyecto le dedicás cada hora de trabajo en Windows.",
   "main": "./out/main/index.js",
-  "author": "Hora",
+  "author": "JasperGwyn",
   "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JasperGwyn/hora.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JasperGwyn/hora/issues"
+  },
+  "homepage": "https://github.com/JasperGwyn/hora#readme",
+  "keywords": [
+    "electron",
+    "time-tracker",
+    "windows",
+    "productivity",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
